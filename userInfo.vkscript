@@ -1,0 +1,48 @@
+var ids = [{ids}];
+var i = 0;
+var res = [];
+
+while (i != ids.length) {{
+	var groupsReq = API.groups.get({{
+		user_id: ids[i],
+		extended: 1,
+	}});
+	var gcnt = groupsReq.count;
+	groupsReq = groupsReq.items;
+	var user = API.users.get({{
+		user_ids: ids[i],
+		fields: "bdate,status,relation,counters"
+	}})[0];
+	var counters = user.counters;
+	var posts = API.wall.get({{
+		owner_id: ids[i],
+	}});
+	var pcnt = posts.count;
+	posts = posts.items;
+
+
+	res.push( {{
+	    id: user.id,
+		first_name: user.first_name,
+		last_name: user.last_name,
+		bdate: user.bdate,
+		status: user.status,
+		posts: {{
+			likes: posts@.likes@.count,
+			count: pcnt,
+		}},
+		groups: {{
+			ids: groupsReq@.screen_name,
+			names: groupsReq@.name,
+			count: gcnt,
+		}},
+		friends: counters.friends,
+		followers: counters.followers,
+		relationship: user.relation
+	}} );
+
+	i = i + 1;
+}}
+
+
+return res;
