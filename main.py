@@ -85,7 +85,7 @@ async def main():
 
     # generate empty result.csv file (with dataframe columns)
     # if none is present
-    with open('result.csv', 'r+', encoding="utf-8") as f:
+    with open('result.csv', 'w+', encoding="utf-8") as f:
         if len(f.read()) < 3:
             f.write(",".join(iter(columns)))
 
@@ -95,18 +95,17 @@ async def main():
 
     pos = int(dotenv.get("PARSING_POS"))
     # any number bigger than 8 causes "Too Many API Calls" error by vk api
+    # because parse 1 person = 3 api requests
+    # parse 8 persons = 24 api requests
+    # the limit is 25 api requests per api.execute
     chunk_size = 8
     chunks = util.list_chunks(ids, chunk_size)
     total = len(ids)
-    new = pd.DataFrame(dtype="object")
-    f = 0
+    new = pd.DataFrame(columns=columns, dtype="object")
     for current in chunks[pos:]:
         try:
             parsed_chunk = vkp.parse(current,
                                      chunk_size=chunk_size)
-            if f == 10:
-                raise
-            f += 1
         except Exception as e:
             print(e)
             set_key(dotenv_file, "PARSING_POS", str(pos))
@@ -121,9 +120,8 @@ async def main():
         else:
             pos += 1
 
-    # convert all the integer columns to int type (obviously)
-    new[integer_columns] = new[integer_columns] \
-        .applymap(int)
+    # new[integer_columns] = new[integer_columns] \
+    #     .applymap(int)
 
     # concat parsed ids by this session and already saved in results.csv file, if any
     result_df = pd.concat([parsed_df, new], ignore_index=True)

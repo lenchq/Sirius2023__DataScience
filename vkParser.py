@@ -36,6 +36,7 @@ class VkParser:
     API_WALL_GET = API_ENDPOINT + "/method/wall.get"
     API_EXECUTE = API_ENDPOINT + "/method/execute"
     API_KEY = ""
+    GROUP_SEPARATOR = ","
 
     def __init__(self, api_key):
         self.API_KEY = api_key
@@ -105,21 +106,23 @@ class VkParser:
                 today = datetime.today()
                 age = relativedelta.relativedelta(today, bdate).years
                 posts = user["posts"]
+                rel = user["relationship"]
 
                 res.append({
                     "ID": user["id"],
                     "name": " ".join(iter([user["first_name"], user["last_name"]])),
                     "age": age,
                     "status": user["status"],
-                    "groups": "\n".join(iter(user["groups"]["names"])),
-                    "groups_links": "\n".join(iter(
+                    "groups": self.GROUP_SEPARATOR.join(iter(user["groups"]["names"])),
+                    "groups_links": self.GROUP_SEPARATOR.join(iter(
                         self.resolve_group_links(user["groups"]["ids"])
                     )),
                     # "groups": self.resolve_groups(user["groups"], user["groups"]["count"]),
                     "friends": user["friends"],
                     "followers": user["followers"],
                     "likes": self.resolve_likes(posts),
-                    "relationship": Relationship(user["relationship"]).name.replace('_', ' ')
+                    "relationship": Relationship(rel if rel is not None else 0)\
+                                        .name.replace('_', ' ')
                 })
                 current += 1
                 if status_update is not None:
