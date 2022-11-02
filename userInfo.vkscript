@@ -16,6 +16,7 @@ while (i != ids.length) {{
 	var counters = user.counters;
 	var posts = API.wall.get({{
 		owner_id: ids[i],
+		count: 50,
 	}});
 	var pcnt = posts.count;
 	posts = posts.items;

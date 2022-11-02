@@ -36,7 +36,7 @@ class VkParser:
     API_WALL_GET = API_ENDPOINT + "/method/wall.get"
     API_EXECUTE = API_ENDPOINT + "/method/execute"
     API_KEY = ""
-    GROUP_SEPARATOR = ","
+    GROUP_SEPARATOR = ";"
 
     def __init__(self, api_key):
         self.API_KEY = api_key
@@ -102,27 +102,31 @@ class VkParser:
             data = self.get_request(self.API_EXECUTE, params=request_data)
 
             for user in data["response"]:
-                bdate = parser.parse(user["bdate"]).date()
+                try:
+                    bdate = parser.parse(user["bdate"]).date()
+                except:
+                    bdate = datetime.today()
                 today = datetime.today()
                 age = relativedelta.relativedelta(today, bdate).years
                 posts = user["posts"]
                 rel = user["relationship"]
+
+                groups = self.GROUP_SEPARATOR.join(iter(user["groups"]["names"]))
+                group_links = self.GROUP_SEPARATOR.join(iter(self.resolve_group_links(user["groups"]["ids"])))
 
                 res.append({
                     "ID": user["id"],
                     "name": " ".join(iter([user["first_name"], user["last_name"]])),
                     "age": age,
                     "status": user["status"],
-                    "groups": self.GROUP_SEPARATOR.join(iter(user["groups"]["names"])),
-                    "groups_links": self.GROUP_SEPARATOR.join(iter(
-                        self.resolve_group_links(user["groups"]["ids"])
-                    )),
+                    "groups": groups,
+                    "groups_links": group_links,
                     # "groups": self.resolve_groups(user["groups"], user["groups"]["count"]),
                     "friends": user["friends"],
                     "followers": user["followers"],
                     "likes": self.resolve_likes(posts),
                     "relationship": Relationship(rel if rel is not None else 0)\
-                                        .name.replace('_', ' ')
+                        .name.replace('_', ' ')
                 })
                 current += 1
                 if status_update is not None:
@@ -172,15 +176,24 @@ class VkParser:
         try:
             req = requests.post(endpoint, params=params)
             data = req.json()
-            if "error" in data.keys():
+            keys = data.keys()
+            if "error" in keys:
                 error = data["error"]
                 raise NameError(error["error_code"], error["error_msg"])
+            elif "execute_errors" in keys:
+                error = data["execute_errors"][0]
+                error_code = error["error_code"]
+                if (error_code == 30 or error_code == 18):
+                    return data
+                raise NameError(error)
             else:
                 # sleep(0.2)
                 return data
         except NameError as err:
-            print(err)
+            print("Exception while making request to " + endpoint, err)
             raise
+        except Exception as e:
+            print(e)
 
     @staticmethod
     def resolve_group_links(ids: List[int]) -> List[str]:

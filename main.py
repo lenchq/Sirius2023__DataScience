@@ -85,8 +85,10 @@ async def main():
 
     # generate empty result.csv file (with dataframe columns)
     # if none is present
-    with open('result.csv', 'w+', encoding="utf-8") as f:
-        if len(f.read()) < 3:
+    with open('result.csv', 'r+', encoding="utf-8") as f:
+        text = f.read()
+        l = len(text)
+        if l < 3:
             f.write(",".join(iter(columns)))
 
     parsed_df = pd.read_csv("result.csv",
@@ -98,16 +100,18 @@ async def main():
     # because parse 1 person = 3 api requests
     # parse 8 persons = 24 api requests
     # the limit is 25 api requests per api.execute
-    chunk_size = 8
+    chunk_size = 6
     chunks = util.list_chunks(ids, chunk_size)
     total = len(ids)
     new = pd.DataFrame(columns=columns, dtype="object")
+    pcount = 0
     for current in chunks[pos:]:
         try:
             parsed_chunk = vkp.parse(current,
                                      chunk_size=chunk_size)
+            pcount += 1
         except Exception as e:
-            print(e)
+            print("Exception while parsing:", e, sep=" ")
             set_key(dotenv_file, "PARSING_POS", str(pos))
             break
         upd(pos * chunk_size, total)
@@ -123,13 +127,13 @@ async def main():
     # new[integer_columns] = new[integer_columns] \
     #     .applymap(int)
 
-    # concat parsed ids by this session and already saved in results.csv file, if any
-    result_df = pd.concat([parsed_df, new], ignore_index=True)
+    if pcount > 0:
+        # concat parsed ids by this session and already saved in results.csv file, if any
+        result_df = pd.concat([parsed_df, new], ignore_index=True)
 
-    result_df.to_csv("result.csv")
-
-    if save_xlsx:
-        result_df.to_excel("result-excel.xlsx", sheet_name="VkUsers", index=True)
+        result_df.to_csv("result.csv")
+        if save_xlsx:
+            result_df.to_excel("result-excel.xlsx", sheet_name="VkUsers", index=True)
 
     progress.stop()
 
